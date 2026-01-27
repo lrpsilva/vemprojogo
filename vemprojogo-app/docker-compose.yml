@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: futevolei-backend
+    restart: always
+    env_file:
+      - ./backend/.env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/uploads:/app/uploads
+    networks:
+      - futevolei-network
+    # Adicionar configuração DNS para preferir IPv4
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Frontend React
+  frontend:
+    build: ./frontend
+    container_name: futevolei-frontend
+    restart: always
+    env_file:
+      - ./frontend/.env
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - futevolei-network
+
+networks:
+  futevolei-network:
+    driver: bridge
