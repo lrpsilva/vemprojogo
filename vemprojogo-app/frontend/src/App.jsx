@@ -96,7 +96,7 @@ function App() {
             <div className="bg-blue-500 w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
               <Users className="text-white" size={32} />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">VemProJogo</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Futevôlei</h1>
             <p className="text-gray-600 mt-2">Organize suas aulas</p>
           </div>
 
@@ -271,7 +271,7 @@ function App() {
           local: novaAula.local
         });
         
-        setNovaAula({ data: '', horario: '', local: ''});
+        setNovaAula({ data: '', horario: '', local: '' });
         setShowNewAula(false);
         
         await loadAulas();
@@ -300,7 +300,7 @@ function App() {
           <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Users className="text-blue-500" size={28} />
-              <h1 className="text-xl font-bold text-gray-800">VemProJogo</h1>
+              <h1 className="text-xl font-bold text-gray-800">Futevôlei</h1>
             </div>
             <div className="flex items-center gap-4">
               <button
@@ -344,7 +344,7 @@ function App() {
           {showNewAula && (
             <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-blue-200">
               <h3 className="text-lg font-bold mb-4 text-gray-800">Criar Nova Aula</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
                   <input
@@ -407,6 +407,7 @@ function App() {
             ) : (
               aulas.map(aula => {
                 const participantes = parseInt(aula.participantes || 0);
+
                 return (
                   <div key={aula.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
                     <div className="flex items-start justify-between mb-4">
@@ -429,25 +430,18 @@ function App() {
                     </div>
 
                     <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-2">
-                        <span>Participantes</span>
-                        <span className="font-semibold">{participantes}/{maxParticipantes}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min((participantes / maxParticipantes) * 100, 100)}%` }}
-                        />
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                        <Users size={16} />
+                        <span className="font-semibold">{participantes} {participantes === 1 ? 'participante' : 'participantes'}</span>
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => confirmarPresenca(aula.id)}
-                      disabled={lotado}
-                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 transition"
                     >
-                      {lotado ? 'Lotado' : 'Confirmar Presença'}
+                      Confirmar Presença
                     </button>
                   </div>
                 );
