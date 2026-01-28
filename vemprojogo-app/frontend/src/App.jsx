@@ -149,49 +149,51 @@ function App() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="bg-white bg-opacity-95 backdrop-blur rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white border-opacity-20">
           <div className="text-center mb-8">
-            <div className="bg-blue-500 w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <Users className="text-white" size={32} />
+            <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+              <Users className="text-white" size={40} />
             </div>
-            <h1 className="text-3xl font-bold text-gray-800">Futevôlei</h1>
-            <p className="text-gray-600 mt-2">Organize suas aulas</p>
+            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">VemProJogo</h1>
+            <p className="text-gray-500 mt-2 font-medium">Organize suas aulas de futevôlei</p>
           </div>
 
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm font-medium">
               {error}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition"
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                placeholder="seu@email.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Senha</label>
               <input
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition"
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                placeholder="••••••••"
               />
             </div>
 
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:bg-gray-400"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white py-3 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Carregando...' : (isSignUp ? 'Criar Conta' : 'Entrar')}
             </button>
@@ -200,7 +202,7 @@ function App() {
           <div className="mt-6 text-center">
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-blue-500 hover:underline text-sm"
+              className="text-blue-600 hover:text-blue-800 text-sm font-semibold underline-offset-2 hover:underline transition"
             >
               {isSignUp ? 'Já tem conta? Entre aqui' : 'Não tem conta? Cadastre-se'}
             </button>
@@ -302,7 +304,7 @@ function App() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nome*</label>
                 <input
                   type="text"
                   value={nome}
@@ -384,11 +386,13 @@ function App() {
     const confirmarPresenca = async (aulaId) => {
       try {
         await api.post('/presencas', { aula_id: aulaId });
-        await loadAulas();
         
-        // Se está visualizando detalhes, atualizar
+        // Se está visualizando detalhes, atualizar apenas os detalhes
         if (showDetalhes && aulaDetalhes?.id === aulaId) {
-          verDetalhesAula(aulaId);
+          await verDetalhesAula(aulaId);
+        } else {
+          // Caso contrário, recarregar as aulas
+          await loadAulas();
         }
       } catch (error) {
         alert(error.response?.data?.error || 'Erro ao confirmar presença');
@@ -398,11 +402,13 @@ function App() {
     const cancelarPresenca = async (aulaId) => {
       try {
         await api.delete(`/presencas/${aulaId}`);
-        await loadAulas();
         
-        // Se está visualizando detalhes, atualizar
+        // Se está visualizando detalhes, atualizar apenas os detalhes
         if (showDetalhes && aulaDetalhes?.id === aulaId) {
-          verDetalhesAula(aulaId);
+          await verDetalhesAula(aulaId);
+        } else {
+          // Caso contrário, recarregar as aulas
+          await loadAulas();
         }
         
         alert('Presença cancelada!');
@@ -481,24 +487,26 @@ function App() {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Users className="text-blue-500" size={28} />
-              <h1 className="text-xl font-bold text-gray-800">Futevôlei</h1>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <header className="bg-white bg-opacity-80 backdrop-blur sticky top-0 z-10 border-b border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 py-5 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
+                <Users className="text-white" size={24} />
+              </div>
+              <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">VemProJogo</h1>
             </div>
             <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={irParaPerfil}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-medium"
               >
                 {profile?.foto_url ? (
                   <img 
                     src={`http://localhost:3000${profile.foto_url}`} 
                     alt="Perfil" 
-                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-300"
+                    className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 shadow-md"
                   />
                 ) : (
                   <User size={20} />
@@ -508,7 +516,7 @@ function App() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition font-medium"
               >
                 <LogOut size={20} />
                 <span className="hidden sm:inline">Sair</span>
@@ -629,32 +637,31 @@ function App() {
         )}
 
         <main className="max-w-7xl mx-auto px-4 py-6 pb-20">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 mb-6 text-white">
+          <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 rounded-2xl p-8 mb-8 text-white shadow-xl">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-bold mb-2">Olá, {profile?.nome || 'Jogador'}! 👋</h2>
-                <p className="opacity-90">{profile?.arena || 'Arena Principal'} • {profile?.cidade || 'Ribeirão Preto'}</p>
+                <h2 className="text-3xl font-black mb-2">Olá, {profile?.nome || 'Jogador'}! 👋</h2>
+                <p className="opacity-90 text-lg font-medium">{profile?.arena || 'Arena Principal'} • {profile?.cidade || 'Ribeirão Preto'}</p>
               </div>
               {profile?.is_admin && (
-                <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-semibold">
-                  Admin
+                <span className="bg-yellow-300 text-yellow-900 px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                  ⭐ Admin
                 </span>
               )}
             </div>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-3">
+          <div className="mb-8 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => {
-                console.log('Clicou Nova Aula, estado atual:', showNewAula);
                 setShowNewAula(!showNewAula);
                 setShowNovaArena(false);
               }}
-              className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition shadow-md"
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-3 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform shadow-md"
             >
               <Plus size={20} />
-              {showNewAula ? 'Fechar Formulário' : 'Nova Aula'}
+              {showNewAula ? 'Fechar' : 'Nova Aula'}
             </button>
             
             {profile?.is_admin && (
@@ -664,7 +671,7 @@ function App() {
                   setShowNovaArena(!showNovaArena);
                   setShowNewAula(false);
                 }}
-                className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition shadow-md"
+                className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-700 text-white px-6 py-3 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform shadow-md"
               >
                 <MapPin size={20} />
                 {showNovaArena ? 'Fechar' : 'Nova Arena'}
@@ -673,37 +680,37 @@ function App() {
           </div>
 
           {showNovaArena && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-green-200">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">Criar Nova Arena</h3>
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-l-4 border-green-500">
+              <h3 className="text-xl font-bold mb-6 text-gray-800">Criar Nova Arena</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome da Arena*</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Nome da Arena*</label>
                   <input
                     type="text"
                     value={novaArena.nome}
                     onChange={(e) => setNovaArena({...novaArena, nome: e.target.value})}
                     placeholder="Ex: Posto 11"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cidade*</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Cidade*</label>
                   <input
                     type="text"
                     value={novaArena.cidade}
                     onChange={(e) => setNovaArena({...novaArena, cidade: e.target.value})}
                     placeholder="Ex: Rio de Janeiro"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white transition"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Descrição</label>
                   <input
                     type="text"
                     value={novaArena.descricao}
                     onChange={(e) => setNovaArena({...novaArena, descricao: e.target.value})}
                     placeholder="Ex: Arena principal na praia"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none bg-white transition"
                   />
                 </div>
               </div>
@@ -712,7 +719,7 @@ function App() {
                   type="button"
                   onClick={criarArena}
                   disabled={loading}
-                  className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400 shadow-md"
+                  className="bg-gradient-to-r from-green-500 to-green-700 text-white px-6 py-2 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform disabled:opacity-50"
                 >
                   {loading ? 'Criando...' : 'Criar Arena'}
                 </button>
@@ -722,7 +729,7 @@ function App() {
                     setShowNovaArena(false);
                     setNovaArena({ nome: '', cidade: '', descricao: '' });
                   }}
-                  className="bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-500 transition shadow-md"
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-bold hover:bg-gray-400 transition"
                 >
                   Cancelar
                 </button>
@@ -731,33 +738,33 @@ function App() {
           )}
 
           {showNewAula && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-blue-200">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">Criar Nova Aula</h3>
+            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-l-4 border-blue-500">
+              <h3 className="text-xl font-bold mb-6 text-gray-800">Criar Nova Aula</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Data</label>
                   <input
                     type="date"
                     value={novaAula.data}
                     onChange={(e) => setNovaAula({...novaAula, data: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Horário</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Horário</label>
                   <input
                     type="time"
                     value={novaAula.horario}
                     onChange={(e) => setNovaAula({...novaAula, horario: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Local/Arena</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Local/Arena</label>
                   <select
                     value={novaAula.local}
                     onChange={(e) => setNovaAula({...novaAula, local: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
                   >
                     <option value="">Selecione uma arena</option>
                     {arenas.map(arena => (
@@ -773,7 +780,7 @@ function App() {
                   type="button"
                   onClick={criarAula}
                   disabled={loading}
-                  className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400 shadow-md"
+                  className="bg-gradient-to-r from-green-500 to-green-700 text-white px-6 py-2 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform disabled:opacity-50"
                 >
                   {loading ? 'Criando...' : 'Criar Aula'}
                 </button>
@@ -783,7 +790,7 @@ function App() {
                     setShowNewAula(false);
                     setNovaAula({ data: '', horario: '', local: '' });
                   }}
-                  className="bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-500 transition shadow-md"
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-bold hover:bg-gray-400 transition"
                 >
                   Cancelar
                 </button>
@@ -805,13 +812,13 @@ function App() {
                 return (
                   <div 
                     key={aula.id} 
-                    className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition cursor-pointer"
+                    className="bg-white rounded-2xl shadow-md hover:shadow-xl hover:scale-105 p-6 transition cursor-pointer border-l-4 border-blue-500"
                     onClick={() => verDetalhesAula(aula.id)}
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar size={18} />
-                        <span className="text-sm">
+                        <Calendar size={18} className="text-blue-500" />
+                        <span className="text-sm font-semibold">
                           {formatarData(aula.data, { 
                             weekday: 'short',
                             month: 'short'
@@ -820,16 +827,16 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="mb-2">
+                    <div className="mb-3">
                       <div className="flex items-center gap-2 text-gray-600">
-                        <Clock size={18} />
-                        <span className="text-sm font-semibold text-blue-500">{formatarHorario(aula.horario)} Horas</span>
+                        <Clock size={18} className="text-blue-500" />
+                        <span className="text-sm font-bold text-blue-600">{formatarHorario(aula.horario)} Horas</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-gray-700 mb-4">
-                      <MapPin size={18} />
-                      <span className="font-medium">{aula.local}</span>
+                    <div className="flex items-center gap-2 text-gray-700 mb-5">
+                      <MapPin size={18} className="text-blue-500" />
+                      <span className="font-semibold">{aula.local}</span>
                     </div>
 
                     <div className="mb-4">
@@ -845,9 +852,9 @@ function App() {
                         e.stopPropagation();
                         confirmarPresenca(aula.id);
                       }}
-                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 transition"
+                      className="w-full bg-gradient-to-r from-blue-500 to-blue-700 text-white py-3 rounded-lg font-bold hover:shadow-lg hover:scale-105 transition transform"
                     >
-                      Confirmar Presença
+                      ✓ Confirmar Presença
                     </button>
                   </div>
                 );
