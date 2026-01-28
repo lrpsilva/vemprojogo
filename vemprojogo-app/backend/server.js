@@ -147,7 +147,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, nome, foto_url, arena, cidade FROM users WHERE id = $1',
+      'SELECT id, email, nome, foto_url, arena, cidade, is_admin FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json(result.rows[0]);
@@ -163,7 +163,7 @@ app.put('/api/auth/profile', authenticateToken, async (req, res) => {
     const { nome, arena, cidade } = req.body;
     
     const result = await pool.query(
-      'UPDATE users SET nome = $1, arena = $2, cidade = $3 WHERE id = $4 RETURNING id, email, nome, foto_url, arena, cidade',
+      'UPDATE users SET nome = $1, arena = $2, cidade = $3 WHERE id = $4 RETURNING id, email, nome, foto_url, arena, cidade, is_admin',
       [nome, arena, cidade, req.user.id]
     );
     res.json(result.rows[0]);
@@ -182,9 +182,9 @@ app.post('/api/auth/upload-photo', authenticateToken, upload.single('photo'), as
 
     const photoUrl = `/uploads/${req.file.filename}`;
     
-    await pool.query('UPDATE users SET foto_url = $1 WHERE id = $2', [photoUrl, req.user.id]);
+    const result = await pool.query('UPDATE users SET foto_url = $1 WHERE id = $2 RETURNING id, email, nome, foto_url, arena, cidade, is_admin', [photoUrl, req.user.id]);
     
-    res.json({ foto_url: photoUrl });
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao fazer upload:', error);
     res.status(500).json({ error: 'Erro ao fazer upload da foto' });
@@ -327,6 +327,86 @@ app.get('/api/presencas/check/:aula_id', authenticateToken, async (req, res) => 
 // Rota de teste
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend rodando!' });
+});
+
+// ========== ROTAS DE ARENAS ==========
+
+// Listar todas as arenas
+app.get('/api/arenas', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM arenas ORDER BY nome');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao listar arenas:', error);
+    res.status(500).json({ error: 'Erro ao listar arenas' });
+  }
+});
+
+// Criar arena (apenas admin)
+app.post('/api/arenas', authenticateToken, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem criar arenas' });
+    }
+
+    const { nome, cidade, descricao } = req.body;
+    
+    const result = await pool.query(
+      'INSERT INTO arenas (nome, cidade, descricao, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nome, cidade, descricao || '', req.user.id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao criar arena:', error);
+    if (error.constraint === 'arenas_nome_key') {
+      return res.status(400).json({ error: 'Já existe uma arena com este nome' });
+    }
+    res.status(500).json({ error: 'Erro ao criar arena' });
+  }
+});
+
+// Atualizar arena (apenas admin)
+app.put('/api/arenas/:id', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem editar arenas' });
+    }
+
+    const { id } = req.params;
+    const { nome, cidade, descricao } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE arenas SET nome = $1, cidade = $2, descricao = $3 WHERE id = $4 RETURNING *',
+      [nome, cidade, descricao, id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar arena:', error);
+    res.status(500).json({ error: 'Erro ao atualizar arena' });
+  }
+});
+
+// Deletar arena (apenas admin)
+app.delete('/api/arenas/:id', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem deletar arenas' });
+    }
+
+    const { id } = req.params;
+    await pool.query('DELETE FROM arenas WHERE id = $1', [id]);
+    
+    res.json({ message: 'Arena deletada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao deletar arena:', error);
+    res.status(500).json({ error: 'Erro ao deletar arena' });
+  }
 });
 
 // Iniciar servidor
