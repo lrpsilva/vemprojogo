@@ -147,7 +147,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, nome, foto_url, arena, cidade, is_admin FROM users WHERE id = $1',
+      'SELECT id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin FROM users WHERE id = $1',
       [req.user.id]
     );
     res.json(result.rows[0]);
@@ -160,11 +160,11 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // Atualizar perfil
 app.put('/api/auth/profile', authenticateToken, async (req, res) => {
   try {
-    const { nome, arena, cidade } = req.body;
+    const { nome, arena, cidade, nivel, instagram } = req.body;
     
     const result = await pool.query(
-      'UPDATE users SET nome = $1, arena = $2, cidade = $3 WHERE id = $4 RETURNING id, email, nome, foto_url, arena, cidade, is_admin',
-      [nome, arena, cidade, req.user.id]
+      'UPDATE users SET nome = $1, arena = $2, cidade = $3, nivel = $4, instagram = $5 WHERE id = $6 RETURNING id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin',
+      [nome, arena, cidade, nivel, instagram, req.user.id]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -182,7 +182,7 @@ app.post('/api/auth/upload-photo', authenticateToken, upload.single('photo'), as
 
     const photoUrl = `/uploads/${req.file.filename}`;
     
-    const result = await pool.query('UPDATE users SET foto_url = $1 WHERE id = $2 RETURNING id, email, nome, foto_url, arena, cidade, is_admin', [photoUrl, req.user.id]);
+    const result = await pool.query('UPDATE users SET foto_url = $1 WHERE id = $2 RETURNING id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin', [photoUrl, req.user.id]);
     
     res.json(result.rows[0]);
   } catch (error) {
@@ -241,7 +241,7 @@ app.get('/api/aulas/:id', async (req, res) => {
     }
 
     const participantesResult = await pool.query(`
-      SELECT u.id, u.nome, u.foto_url
+      SELECT u.id, u.nome, u.foto_url, u.nivel, u.instagram, u.arena, u.cidade
       FROM presencas p
       JOIN users u ON p.user_id = u.id
       WHERE p.aula_id = $1

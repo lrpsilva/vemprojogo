@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, MapPin, Plus, LogOut, User, Image, Trash2, Clock } from 'lucide-react';
+import { Calendar, Users, MapPin, Plus, LogOut, User, Image, Trash2, Clock, Zap } from 'lucide-react';
 import axios from 'axios';
+import logo from './assets/logo.png';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -118,6 +119,18 @@ function App() {
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
+    const [lembrarMe, setLembrarMe] = useState(false);
+
+    useEffect(() => {
+      // Carregar dados salvos do localStorage ao montar o componente
+      const emailSalvo = localStorage.getItem('vemprojogo_email');
+      const senhaSalva = localStorage.getItem('vemprojogo_senha');
+      if (emailSalvo && senhaSalva) {
+        setEmail(emailSalvo);
+        setSenha(senhaSalva);
+        setLembrarMe(true);
+      }
+    }, []);
 
     const handleSubmit = async () => {
       setLoading(true);
@@ -132,6 +145,16 @@ function App() {
         const response = await api.post(endpoint, payload);
         
         localStorage.setItem('token', response.data.token);
+        
+        // Salvar ou limpar credenciais baseado em 'lembrar-me'
+        if (lembrarMe && !isSignUp) {
+          localStorage.setItem('vemprojogo_email', email);
+          localStorage.setItem('vemprojogo_senha', senha);
+        } else {
+          localStorage.removeItem('vemprojogo_email');
+          localStorage.removeItem('vemprojogo_senha');
+        }
+        
         setUser(response.data.user);
         setProfile(response.data.user);
         
@@ -149,14 +172,29 @@ function App() {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white bg-opacity-95 backdrop-blur rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white border-opacity-20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Elementos decorativos de fundo */}
+        <div className="absolute top-10 left-10 w-32 h-32 bg-blue-500 opacity-10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-40 h-40 bg-blue-600 opacity-10 rounded-full blur-3xl"></div>
+        
+        <div className="bg-white bg-opacity-95 backdrop-blur rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white border-opacity-20 relative z-10">
           <div className="text-center mb-8">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
-              <Users className="text-white" size={40} />
+            <div className="mb-8 flex justify-center">
+              <div className="relative">
+                {/* Efeito de brilho animado */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-3xl blur-2xl opacity-40 animate-pulse"></div>
+                {/* Card do ícone */}
+                <div className="relative bg-white rounded-3xl p-6 shadow-2xl border-2 border-blue-100">
+                  <img src={logo} alt="VemProJogo Logo" className="w-32 h-32 object-contain" />
+                </div>
+              </div>
             </div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">VemProJogo</h1>
             <p className="text-gray-500 mt-2 font-medium">Organize suas aulas de futevôlei</p>
+            <div className="flex items-center justify-center gap-1 mt-3 text-blue-600">
+              <Zap size={16} className="fill-current" />
+              <span className="text-xs font-semibold">Conecte jogadores e crie comunidades</span>
+            </div>
           </div>
 
           {error && (
@@ -190,6 +228,21 @@ function App() {
               />
             </div>
 
+            {!isSignUp && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="lembrarMe"
+                  checked={lembrarMe}
+                  onChange={(e) => setLembrarMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="lembrarMe" className="text-sm font-medium text-gray-600 cursor-pointer select-none">
+                  Lembrar meus dados
+                </label>
+              </div>
+            )}
+
             <button
               onClick={handleSubmit}
               disabled={loading}
@@ -213,9 +266,11 @@ function App() {
   };
 
   const Perfil = () => {
-    const [nome, setNome] = useState(profile?.nome || '');
-    const [arena, setArena] = useState(profile?.arena || '');
-    const [cidade, setCidade] = useState(profile?.cidade || '');
+    const [nome, setNome] = useState('');
+    const [arena, setArena] = useState('');
+    const [cidade, setCidade] = useState('');
+    const [nivel, setNivel] = useState('');
+    const [instagram, setInstagram] = useState('');
 
     useEffect(() => {
       if (!arenasLoaded) {
@@ -251,7 +306,7 @@ function App() {
     const handleSubmit = async () => {
       setLoading(true);
       try {
-        const response = await api.put('/auth/profile', { nome, arena, cidade });
+        const response = await api.put('/auth/profile', { nome, arena, cidade, nivel, instagram });
         setProfile(response.data);
         setView('aulas');
         // Não carregar aulas aqui
@@ -309,7 +364,8 @@ function App() {
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: João Silva"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                 />
               </div>
 
@@ -335,8 +391,33 @@ function App() {
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
                   placeholder="Ex: Rio de Janeiro"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nível</label>
+                <select
+                  value={nivel}
+                  onChange={(e) => setNivel(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">Selecione um nível</option>
+                  <option value="Iniciante">Iniciante</option>
+                  <option value="Intermediário">Intermediário</option>
+                  <option value="Avançado">Avançado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                <input
+                  type="text"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="Ex: @seu_instagram"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
                 />
               </div>
 
@@ -362,6 +443,7 @@ function App() {
     const [novaArena, setNovaArena] = useState({ nome: '', cidade: '', descricao: '' });
     const [aulaDetalhes, setAulaDetalhes] = useState(null);
     const [showDetalhes, setShowDetalhes] = useState(false);
+    const [participanteSelecionado, setParticipanteSelecionado] = useState(null);
 
     useEffect(() => {
       if (!aulasLoaded) {
@@ -491,9 +573,7 @@ function App() {
         <header className="bg-white bg-opacity-80 backdrop-blur sticky top-0 z-10 border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 py-5 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-10 h-10 rounded-lg flex items-center justify-center shadow-md">
-                <Users className="text-white" size={24} />
-              </div>
+              <img src={logo} alt="VemProJogo Logo" className="w-10 h-10 object-contain" />
               <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">VemProJogo</h1>
             </div>
             <div className="flex items-center gap-4">
@@ -575,7 +655,11 @@ function App() {
                   {aulaDetalhes.participantes && aulaDetalhes.participantes.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {aulaDetalhes.participantes.map(participante => (
-                        <div key={participante.id} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                        <div 
+                          key={participante.id} 
+                          onClick={() => setParticipanteSelecionado(participante)}
+                          className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg cursor-pointer hover:bg-blue-50 hover:shadow-md transition transform hover:scale-102"
+                        >
                           <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
                             {participante.foto_url ? (
                               <img 
@@ -631,6 +715,95 @@ function App() {
                     Fechar
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {participanteSelecionado && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setParticipanteSelecionado(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <h2 className="text-2xl font-bold text-gray-800">Perfil do Jogador</h2>
+                  <button
+                    type="button"
+                    onClick={() => setParticipanteSelecionado(null)}
+                    className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden mb-4">
+                    {participanteSelecionado.foto_url ? (
+                      <img 
+                        src={`http://localhost:3000${participanteSelecionado.foto_url}`} 
+                        alt={participanteSelecionado.nome}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User size={48} className="text-gray-400" />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-1">{participanteSelecionado.nome}</h3>
+                  {participanteSelecionado.id === user.id && (
+                    <span className="text-sm text-blue-500 font-medium">Você</span>
+                  )}
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  {participanteSelecionado.nivel && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-gray-600 mb-1">Nível</p>
+                      <p className="text-lg font-medium text-blue-600">{participanteSelecionado.nivel}</p>
+                    </div>
+                  )}
+                  
+                  {participanteSelecionado.arena && (
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-gray-600 mb-1">Arena</p>
+                      <p className="text-lg font-medium text-green-600">{participanteSelecionado.arena}</p>
+                    </div>
+                  )}
+                  
+                  {participanteSelecionado.cidade && (
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-gray-600 mb-1">Cidade</p>
+                      <p className="text-lg font-medium text-purple-600">{participanteSelecionado.cidade}</p>
+                    </div>
+                  )}
+                  
+                  {participanteSelecionado.instagram && (
+                    <div className="bg-pink-50 p-4 rounded-lg">
+                      <p className="text-sm font-semibold text-gray-600 mb-1">Instagram</p>
+                      <a 
+                        href={`https://instagram.com/${participanteSelecionado.instagram.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-lg font-medium text-pink-600 hover:text-pink-700 underline"
+                      >
+                        {participanteSelecionado.instagram}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setParticipanteSelecionado(null)}
+                  className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition"
+                >
+                  Fechar
+                </button>
               </div>
             </div>
           </div>
