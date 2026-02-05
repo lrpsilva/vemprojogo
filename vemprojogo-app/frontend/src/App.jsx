@@ -273,6 +273,17 @@ function App() {
     const [instagram, setInstagram] = useState('');
 
     useEffect(() => {
+      // Carregar dados do perfil quando o componente monta
+      if (profile) {
+        setNome(profile.nome || '');
+        setArena(profile.arena || '');
+        setCidade(profile.cidade || '');
+        setNivel(profile.nivel || '');
+        setInstagram(profile.instagram || '');
+      }
+    }, []);
+
+    useEffect(() => {
       if (!arenasLoaded) {
         loadArenas();
       }
