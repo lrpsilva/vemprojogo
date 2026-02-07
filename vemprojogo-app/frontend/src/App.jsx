@@ -271,6 +271,7 @@ function App() {
     const [cidade, setCidade] = useState('');
     const [nivel, setNivel] = useState('');
     const [instagram, setInstagram] = useState('');
+    const [erros, setErros] = useState({});
 
     useEffect(() => {
       // Carregar dados do perfil quando o componente monta
@@ -282,6 +283,11 @@ function App() {
         setInstagram(profile.instagram || '');
       }
     }, []);
+
+    useEffect(() => {
+      // Limpar erros quando usuário começa a editar
+      setErros({});
+    }, [nome, arena, cidade, nivel]);
 
     useEffect(() => {
       if (!arenasLoaded) {
@@ -315,14 +321,36 @@ function App() {
     };
 
     const handleSubmit = async () => {
+      // Validar campos obrigatórios
+      const novosErros = {};
+      
+      if (!nome.trim()) {
+        novosErros.nome = 'Nome é obrigatório';
+      }
+      if (!arena.trim()) {
+        novosErros.arena = 'Arena é obrigatória';
+      }
+      if (!cidade.trim()) {
+        novosErros.cidade = 'Cidade é obrigatória';
+      }
+      if (!nivel.trim()) {
+        novosErros.nivel = 'Nível é obrigatório';
+      }
+
+      if (Object.keys(novosErros).length > 0) {
+        setErros(novosErros);
+        return;
+      }
+
       setLoading(true);
       try {
         const response = await api.put('/auth/profile', { nome, arena, cidade, nivel, instagram });
         setProfile(response.data);
         setView('aulas');
+        setErros({});
         // Não carregar aulas aqui
       } catch (error) {
-        setError('Erro ao atualizar perfil');
+        setErros({ geral: 'Erro ao atualizar perfil' });
       } finally {
         setLoading(false);
       }
@@ -376,8 +404,10 @@ function App() {
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Ex: João Silva"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${erros.nome ? 'border-red-500' : 'border-gray-300'}`}
+                  required
                 />
+                {erros.nome && <p className="text-red-500 text-sm mt-1">{erros.nome}</p>}
               </div>
 
               <div>
@@ -385,7 +415,7 @@ function App() {
                 <select
                   value={arena}
                   onChange={(e) => setArena(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 ${erros.arena ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 >
                   <option value="">Selecione uma arena</option>
@@ -393,6 +423,7 @@ function App() {
                     <option key={a.id} value={a.nome}>{a.nome} - {a.cidade}</option>
                   ))}
                 </select>
+                {erros.arena && <p className="text-red-500 text-sm mt-1">{erros.arena}</p>}
               </div>
 
               <div>
@@ -402,23 +433,26 @@ function App() {
                   value={cidade}
                   onChange={(e) => setCidade(e.target.value)}
                   placeholder="Ex: Rio de Janeiro"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${erros.cidade ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 />
+                {erros.cidade && <p className="text-red-500 text-sm mt-1">{erros.cidade}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nível</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nível*</label>
                 <select
                   value={nivel}
                   onChange={(e) => setNivel(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white ${erros.nivel ? 'border-red-500' : 'border-gray-300'}`}
+                  required
                 >
                   <option value="">Selecione um nível</option>
                   <option value="Iniciante">Iniciante</option>
                   <option value="Intermediário">Intermediário</option>
                   <option value="Avançado">Avançado</option>
                 </select>
+                {erros.nivel && <p className="text-red-500 text-sm mt-1">{erros.nivel}</p>}
               </div>
 
               <div>
