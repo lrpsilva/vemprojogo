@@ -282,7 +282,7 @@ function App() {
         setNivel(profile.nivel || '');
         setInstagram(profile.instagram || '');
       }
-    }, []);
+    },  []);
 
     useEffect(() => {
       // Limpar erros quando usuário começa a editar
@@ -474,6 +474,18 @@ function App() {
               >
                 {loading ? 'Salvando...' : 'Salvar Perfil'}
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setView('aulas');
+                  setErros({});
+                }}
+                disabled={loading}
+                className="w-full bg-gray-400 text-white py-3 rounded-lg font-semibold hover:bg-gray-500 transition disabled:bg-gray-300 mt-2"
+              >
+                Voltar
+              </button>
             </div>
           </div>
         </div>
@@ -489,6 +501,9 @@ function App() {
     const [aulaDetalhes, setAulaDetalhes] = useState(null);
     const [showDetalhes, setShowDetalhes] = useState(false);
     const [participanteSelecionado, setParticipanteSelecionado] = useState(null);
+    const [errosAula, setErrosAula] = useState({});
+    const [errosArena, setErrosArena] = useState({});
+    const horarioInputRef = React.useRef(null);
 
     useEffect(() => {
       if (!aulasLoaded) {
@@ -545,8 +560,33 @@ function App() {
     };
 
     const criarAula = async () => {
-      if (!novaAula.data || !novaAula.horario || !novaAula.local) {
-        alert('Preencha todos os campos!');
+      const novosErros = {};
+
+      if (!novaAula.data) {
+        novosErros.data = 'Data é obrigatória';
+      }
+      if (!novaAula.horario) {
+        novosErros.horario = 'Horário é obrigatório';
+      }
+      if (!novaAula.local) {
+        novosErros.local = 'Local é obrigatório';
+      }
+
+      // Validar se a data não é menor que hoje
+      if (novaAula.data) {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const [ano, mes, dia] = novaAula.data.split('-');
+        const dataAula = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+
+        if (dataAula < hoje) {
+          novosErros.data = 'Não é possível criar aulas em datas passadas';
+        }
+      }
+
+      if (Object.keys(novosErros).length > 0) {
+        setErrosAula(novosErros);
         return;
       }
 
@@ -560,6 +600,7 @@ function App() {
         
         setNovaAula({ data: '', horario: '', local: '' });
         setShowNewAula(false);
+        setErrosAula({});
         
         await loadAulas();
         
@@ -960,29 +1001,56 @@ function App() {
               <h3 className="text-xl font-bold mb-6 text-gray-800">Criar Nova Aula</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Data</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Data*</label>
                   <input
                     type="date"
                     value={novaAula.data}
-                    onChange={(e) => setNovaAula({...novaAula, data: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
+                    onChange={(e) => {
+                      setNovaAula({...novaAula, data: e.target.value});
+                      setErrosAula({});
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition ${errosAula.data ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {errosAula.data && <p className="text-red-500 text-sm mt-1">{errosAula.data}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Horário</label>
-                  <input
-                    type="time"
-                    value={novaAula.horario}
-                    onChange={(e) => setNovaAula({...novaAula, horario: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
-                  />
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Horário*</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        horarioInputRef.current?.showPicker?.();
+                        if (!horarioInputRef.current?.showPicker) {
+                          horarioInputRef.current?.focus();
+                        }
+                      }}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-700 transition z-10"
+                    >
+                      <Clock className="w-5 h-5" />
+                    </button>
+                    <input
+                      ref={horarioInputRef}
+                      type="time"
+                      value={novaAula.horario}
+                      onChange={(e) => {
+                        setNovaAula({...novaAula, horario: e.target.value});
+                        setErrosAula({});
+                      }}
+                      className={`w-full pl-4 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition text-base font-semibold cursor-pointer hover:bg-blue-50 ${errosAula.horario ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                  </div>
+                  {errosAula.horario && <p className="text-red-500 text-sm mt-1">{errosAula.horario}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Local/Arena</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Local/Arena*</label>
                   <select
                     value={novaAula.local}
-                    onChange={(e) => setNovaAula({...novaAula, local: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
+                    onChange={(e) => {
+                      setNovaAula({...novaAula, local: e.target.value});
+                      setErrosAula({});
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition ${errosAula.local ? 'border-red-500' : 'border-gray-300'}`}
                   >
                     <option value="">Selecione uma arena</option>
                     {arenas.map(arena => (
@@ -991,6 +1059,7 @@ function App() {
                       </option>
                     ))}
                   </select>
+                  {errosAula.local && <p className="text-red-500 text-sm mt-1">{errosAula.local}</p>}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
