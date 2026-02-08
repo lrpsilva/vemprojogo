@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  height: 100%;
+  background-color: #242424;
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -28,10 +33,14 @@ a:hover {
 
 body {
   margin: 0;
+  padding: 0;
   display: flex;
-  place-items: center;
+  justify-content: center;
+  align-items: flex-start;
   min-width: 320px;
   min-height: 100vh;
+  width: 100%;
+  background-color: #242424;
 }
 
 h1 {
@@ -69,4 +78,35 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Estilização de inputs para melhor visibilidade */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+select:focus,
+textarea:focus {
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
 }

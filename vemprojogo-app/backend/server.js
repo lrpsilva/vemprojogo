@@ -1,482 +1,416 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Users, MapPin, Plus, LogOut, User, Image, Trash2 } from 'lucide-react';
-import axios from 'axios';
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-// Configurar axios para incluir token em todas as requisições
-const api = axios.create({
-  baseURL: API_URL
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+
+// Configuração do PostgreSQL (Supabase)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 20,
+  options: '-c search_path=public'
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-function App() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [view, setView] = useState('login');
-  const [aulas, setAulas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [aulasLoaded, setAulasLoaded] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      loadProfile();
-    }
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      const response = await api.get('/auth/me');
-      setProfile(response.data);
-      setUser({ id: response.data.id });
-      setView('aulas');
-    } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
-      localStorage.removeItem('token');
-    }
-  };
-
-  const loadAulas = async () => {
-    try {
-      const response = await api.get('/aulas');
-      setAulas(response.data);
-      setAulasLoaded(true);
-    } catch (error) {
-      console.error('Erro ao carregar aulas:', error);
-    }
-  };
-
-  const Login = () => {
-    const [email, setEmail] = useState('');
-    const [senha, setSenha] = useState('');
-    const [isSignUp, setIsSignUp] = useState(false);
-
-    const handleSubmit = async () => {
-      setLoading(true);
-      setError('');
-      
-      try {
-        const endpoint = isSignUp ? '/auth/register' : '/auth/login';
-        const payload = isSignUp 
-          ? { email, password: senha, nome: 'Novo Usuário', arena: 'Arena Principal', cidade: 'Sua Cidade' }
-          : { email, password: senha };
-
-        const response = await api.post(endpoint, payload);
-        
-        localStorage.setItem('token', response.data.token);
-        setUser(response.data.user);
-        setProfile(response.data.user);
-        
-        if (isSignUp) {
-          setView('perfil');
-        } else {
-          setView('aulas');
-          // Não carregar aulas aqui, deixar o useEffect do componente Aulas fazer isso
-        }
-      } catch (error) {
-        setError(error.response?.data?.error || 'Erro ao fazer login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="bg-blue-500 w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <Users className="text-white" size={32} />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800">VemProJogo</h1>
-            <p className="text-gray-600 mt-2">Organize suas aulas</p>
-          </div>
-
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              />
-            </div>
-
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:bg-gray-400"
-            >
-              {loading ? 'Carregando...' : (isSignUp ? 'Criar Conta' : 'Entrar')}
-            </button>
-          </div>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-blue-500 hover:underline text-sm"
-            >
-              {isSignUp ? 'Já tem conta? Entre aqui' : 'Não tem conta? Cadastre-se'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const Perfil = () => {
-    const [nome, setNome] = useState(profile?.nome || '');
-    const [arena, setArena] = useState(profile?.arena || '');
-    const [cidade, setCidade] = useState(profile?.cidade || '');
-
-    const handleSubmit = async () => {
-      setLoading(true);
-      try {
-        const response = await api.put('/auth/profile', { nome, arena, cidade });
-        setProfile(response.data);
-        setView('aulas');
-        // Não carregar aulas aqui
-      } catch (error) {
-        setError('Erro ao atualizar perfil');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Complete seu Perfil</h2>
-            
-            <div className="space-y-6">
-              <div className="flex justify-center mb-6">
-                <div className="relative">
-                  <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                    {profile?.foto_url ? (
-                      <img src={`http://localhost:5000${profile.foto_url}`} alt="Perfil" className="w-24 h-24 rounded-full object-cover" />
-                    ) : (
-                      <User size={40} className="text-gray-400" />
-                    )}
-                  </div>
-                  <button className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600">
-                    <Image size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
-                <input
-                  type="text"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Arena (Local de Jogo)</label>
-                <input
-                  type="text"
-                  value={arena}
-                  onChange={(e) => setArena(e.target.value)}
-                  placeholder="Ex: Arena Copacabana, Posto 11"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cidade</label>
-                <input
-                  type="text"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  placeholder="Ex: Rio de Janeiro"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition"
-              >
-                {loading ? 'Salvando...' : 'Salvar Perfil'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const Aulas = () => {
-    const [showNewAula, setShowNewAula] = useState(false);
-    const [novaAula, setNovaAula] = useState({ data: '', horario: '', local: '', max_participantes: 12 });
-
-    useEffect(() => {
-      if (!aulasLoaded) {
-        loadAulas();
-      }
-    }, []);
-
-    const confirmarPresenca = async (aulaId) => {
-      try {
-        await api.post('/presencas', { aula_id: aulaId });
-        await loadAulas();
-      } catch (error) {
-        alert(error.response?.data?.error || 'Erro ao confirmar presença');
-      }
-    };
-
-    const criarAula = async () => {
-      if (!novaAula.data || !novaAula.horario || !novaAula.local) {
-        alert('Preencha todos os campos!');
-        return;
-      }
-
-      try {
-        setLoading(true);
-        await api.post('/aulas', {
-          data: novaAula.data,
-          horario: novaAula.horario,
-          local: novaAula.local,
-          max_participantes: novaAula.max_participantes || 12
-        });
-        
-        setNovaAula({ data: '', horario: '', local: '', max_participantes: 12 });
-        setShowNewAula(false);
-        
-        await loadAulas();
-        
-        alert('Aula criada com sucesso!');
-      } catch (error) {
-        console.error('Erro ao criar aula:', error);
-        alert('Erro ao criar aula: ' + (error.response?.data?.error || 'Erro desconhecido'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const handleLogout = () => {
-      localStorage.removeItem('token');
-      setUser(null);
-      setProfile(null);
-      setView('login');
-      setAulas([]);
-      setAulasLoaded(false);
-    };
-
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Users className="text-blue-500" size={28} />
-              <h1 className="text-xl font-bold text-gray-800">VemProJogo</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setView('perfil')}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-              >
-                <User size={20} />
-                <span className="hidden sm:inline">Perfil</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-              >
-                <LogOut size={20} />
-                <span className="hidden sm:inline">Sair</span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 py-6 pb-20">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 mb-6 text-white">
-            <h2 className="text-2xl font-bold mb-2">Olá, {profile?.nome || 'Jogador'}! 👋</h2>
-            <p className="opacity-90">{profile?.arena || 'Arena Principal'} • {profile?.cidade || 'Ribeirão Preto'}</p>
-          </div>
-
-          <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                console.log('Clicou Nova Aula, estado atual:', showNewAula);
-                setShowNewAula(!showNewAula);
-              }}
-              className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition shadow-md"
-            >
-              <Plus size={20} />
-              {showNewAula ? 'Fechar Formulário' : 'Nova Aula'}
-            </button>
-          </div>
-
-          {showNewAula && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-2 border-blue-200">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">Criar Nova Aula</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data</label>
-                  <input
-                    type="date"
-                    value={novaAula.data}
-                    onChange={(e) => setNovaAula({...novaAula, data: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Horário</label>
-                  <input
-                    type="time"
-                    value={novaAula.horario}
-                    onChange={(e) => setNovaAula({...novaAula, horario: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Local/Arena</label>
-                  <input
-                    type="text"
-                    value={novaAula.local}
-                    onChange={(e) => setNovaAula({...novaAula, local: e.target.value})}
-                    placeholder="Ex: Posto 11, Quadra 2"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Máx. Participantes</label>
-                  <input
-                    type="number"
-                    value={novaAula.max_participantes}
-                    onChange={(e) => setNovaAula({...novaAula, max_participantes: parseInt(e.target.value) || 12})}
-                    min="2"
-                    max="20"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={criarAula}
-                  disabled={loading}
-                  className="bg-green-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-600 transition disabled:bg-gray-400 shadow-md"
-                >
-                  {loading ? 'Criando...' : 'Criar Aula'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowNewAula(false);
-                    setNovaAula({ data: '', horario: '', local: '', max_participantes: 12 });
-                  }}
-                  className="bg-gray-400 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-500 transition shadow-md"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {aulas.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <Calendar className="mx-auto text-gray-300 mb-4" size={64} />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">Nenhuma aula agendada</h3>
-                <p className="text-gray-500">Clique em "Nova Aula" para criar a primeira!</p>
-              </div>
-            ) : (
-              aulas.map(aula => {
-                const participantes = parseInt(aula.participantes || 0);
-                const maxParticipantes = parseInt(aula.max_participantes || 12);
-                const lotado = participantes >= maxParticipantes;
-
-                return (
-                  <div key={aula.id} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar size={18} />
-                        <span className="text-sm">
-                          {new Date(aula.data + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                            day: '2-digit', 
-                            month: 'short',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                      <span className="text-sm font-semibold text-blue-500">{aula.horario}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-700 mb-4">
-                      <MapPin size={18} />
-                      <span className="font-medium">{aula.local}</span>
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-2">
-                        <span>Participantes</span>
-                        <span className="font-semibold">{participantes}/{maxParticipantes}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min((participantes / maxParticipantes) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => confirmarPresenca(aula.id)}
-                      disabled={lotado}
-                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
-                    >
-                      {lotado ? 'Lotado' : 'Confirmar Presença'}
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </main>
-      </div>
-    );
-  };
-
-  if (!user) return <Login />;
-  if (view === 'perfil') return <Perfil />;
-  return <Aulas />;
+// Configuração do Multer para upload de imagens
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-export default App;
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas!'));
+    }
+  }
+});
+
+// Testar conexão com o banco
+const initDatabase = async () => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    console.log('✅ Conectado ao Supabase:', result.rows[0].now);
+  } catch (error) {
+    console.error('❌ Erro ao conectar ao Supabase:', error.message);
+    console.error('Verifique suas credenciais no arquivo .env');
+  }
+};
+
+// Middleware de autenticação
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET || 'seu-secret-key', (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
+
+// ========== ROTAS DE AUTENTICAÇÃO ==========
+
+// Registro
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, nome, arena, cidade } = req.body;
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const result = await pool.query(
+      'INSERT INTO users (email, password, nome, arena, cidade) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, nome, arena, cidade',
+      [email, hashedPassword, nome, arena, cidade]
+    );
+
+    const token = jwt.sign(
+      { id: result.rows[0].id, email: result.rows[0].email },
+      process.env.JWT_SECRET || 'seu-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    res.json({ user: result.rows[0], token });
+  } catch (error) {
+    console.error('Erro no registro:', error);
+    if (error.constraint === 'users_email_key') {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+    res.status(500).json({ error: 'Erro ao registrar usuário' });
+  }
+});
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || 'seu-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json({ user: userWithoutPassword, token });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+});
+
+// Obter perfil do usuário
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    res.status(500).json({ error: 'Erro ao buscar perfil' });
+  }
+});
+
+// Atualizar perfil
+app.put('/api/auth/profile', authenticateToken, async (req, res) => {
+  try {
+    const { nome, arena, cidade, nivel, instagram } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE users SET nome = $1, arena = $2, cidade = $3, nivel = $4, instagram = $5 WHERE id = $6 RETURNING id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin',
+      [nome, arena, cidade, nivel, instagram, req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    res.status(500).json({ error: 'Erro ao atualizar perfil' });
+  }
+});
+
+// Upload de foto (armazenamento local)
+app.post('/api/auth/upload-photo', authenticateToken, upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhuma foto foi enviada' });
+    }
+
+    const photoUrl = `/uploads/${req.file.filename}`;
+    
+    const result = await pool.query('UPDATE users SET foto_url = $1 WHERE id = $2 RETURNING id, email, nome, foto_url, arena, cidade, nivel, instagram, is_admin', [photoUrl, req.user.id]);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao fazer upload:', error);
+    res.status(500).json({ error: 'Erro ao fazer upload da foto' });
+  }
+});
+
+// ========== ROTAS DE AULAS ==========
+
+// Listar todas as aulas
+app.get('/api/aulas', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        a.*,
+        COUNT(p.id) as participantes,
+        u.nome as criador_nome
+      FROM aulas a
+      LEFT JOIN presencas p ON a.id = p.aula_id
+      LEFT JOIN users u ON a.created_by = u.id
+      WHERE a.data >= CURRENT_DATE
+      GROUP BY a.id, u.nome
+      ORDER BY a.data, a.horario
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao listar aulas:', error);
+    res.status(500).json({ error: 'Erro ao listar aulas' });
+  }
+});
+
+// Criar aula
+app.post('/api/aulas', authenticateToken, async (req, res) => {
+  try {
+    const { data, horario, local } = req.body;
+    const result = await pool.query(
+      'INSERT INTO aulas (data, horario, local, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+      [data, horario, local, req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao criar aula:', error);
+    res.status(500).json({ error: 'Erro ao criar aula' });
+  }
+});
+
+// Obter uma aula específica
+app.get('/api/aulas/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const aulaResult = await pool.query('SELECT * FROM aulas WHERE id = $1', [id]);
+    
+    if (aulaResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Aula não encontrada' });
+    }
+
+    const participantesResult = await pool.query(`
+      SELECT u.id, u.nome, u.foto_url, u.nivel, u.instagram, u.arena, u.cidade
+      FROM presencas p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.aula_id = $1
+    `, [id]);
+
+    res.json({
+      ...aulaResult.rows[0],
+      participantes: participantesResult.rows
+    });
+  } catch (error) {
+    console.error('Erro ao buscar aula:', error);
+    res.status(500).json({ error: 'Erro ao buscar aula' });
+  }
+});
+
+// Deletar aula
+app.delete('/api/aulas/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM aulas WHERE id = $1 AND created_by = $2', [id, req.user.id]);
+    res.json({ message: 'Aula deletada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao deletar aula:', error);
+    res.status(500).json({ error: 'Erro ao deletar aula' });
+  }
+});
+
+// ========== ROTAS DE PRESENÇAS ==========
+
+// Confirmar presença
+app.post('/api/presencas', authenticateToken, async (req, res) => {
+  try {
+    const { aula_id } = req.body;
+    
+    const existente = await pool.query(
+      'SELECT * FROM presencas WHERE aula_id = $1 AND user_id = $2',
+      [aula_id, req.user.id]
+    );
+
+    if (existente.rows.length > 0) {
+      return res.status(400).json({ error: 'Presença já confirmada' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO presencas (aula_id, user_id) VALUES ($1, $2) RETURNING *',
+      [aula_id, req.user.id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao confirmar presença:', error);
+    res.status(500).json({ error: 'Erro ao confirmar presença' });
+  }
+});
+
+// Cancelar presença
+app.delete('/api/presencas/:aula_id', authenticateToken, async (req, res) => {
+  try {
+    const { aula_id } = req.params;
+    await pool.query('DELETE FROM presencas WHERE aula_id = $1 AND user_id = $2', [aula_id, req.user.id]);
+    res.json({ message: 'Presença cancelada' });
+  } catch (error) {
+    console.error('Erro ao cancelar presença:', error);
+    res.status(500).json({ error: 'Erro ao cancelar presença' });
+  }
+});
+
+// Verificar se usuário está confirmado
+app.get('/api/presencas/check/:aula_id', authenticateToken, async (req, res) => {
+  try {
+    const { aula_id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM presencas WHERE aula_id = $1 AND user_id = $2',
+      [aula_id, req.user.id]
+    );
+    res.json({ confirmado: result.rows.length > 0 });
+  } catch (error) {
+    console.error('Erro ao verificar presença:', error);
+    res.status(500).json({ error: 'Erro ao verificar presença' });
+  }
+});
+
+// Rota de teste
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Backend rodando!' });
+});
+
+// ========== ROTAS DE ARENAS ==========
+
+// Listar todas as arenas
+app.get('/api/arenas', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM arenas ORDER BY nome');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao listar arenas:', error);
+    res.status(500).json({ error: 'Erro ao listar arenas' });
+  }
+});
+
+// Criar arena (apenas admin)
+app.post('/api/arenas', authenticateToken, async (req, res) => {
+  try {
+    // Verificar se é admin
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem criar arenas' });
+    }
+
+    const { nome, cidade, descricao } = req.body;
+    
+    const result = await pool.query(
+      'INSERT INTO arenas (nome, cidade, descricao, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+      [nome, cidade, descricao || '', req.user.id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao criar arena:', error);
+    if (error.constraint === 'arenas_nome_key') {
+      return res.status(400).json({ error: 'Já existe uma arena com este nome' });
+    }
+    res.status(500).json({ error: 'Erro ao criar arena' });
+  }
+});
+
+// Atualizar arena (apenas admin)
+app.put('/api/arenas/:id', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem editar arenas' });
+    }
+
+    const { id } = req.params;
+    const { nome, cidade, descricao } = req.body;
+    
+    const result = await pool.query(
+      'UPDATE arenas SET nome = $1, cidade = $2, descricao = $3 WHERE id = $4 RETURNING *',
+      [nome, cidade, descricao, id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar arena:', error);
+    res.status(500).json({ error: 'Erro ao atualizar arena' });
+  }
+});
+
+// Deletar arena (apenas admin)
+app.delete('/api/arenas/:id', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) {
+      return res.status(403).json({ error: 'Apenas administradores podem deletar arenas' });
+    }
+
+    const { id } = req.params;
+    await pool.query('DELETE FROM arenas WHERE id = $1', [id]);
+    
+    res.json({ message: 'Arena deletada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao deletar arena:', error);
+    res.status(500).json({ error: 'Erro ao deletar arena' });
+  }
+});
+
+// Iniciar servidor
+app.listen(PORT, async () => {
+  await initDatabase();
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
